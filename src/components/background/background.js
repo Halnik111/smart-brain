@@ -5,7 +5,6 @@ import React from "react";
 
 const Background = () => {
     const particlesInit = useCallback(async (engine) => {
-        console.log(engine);
         // you can initiate the tsParticles instance (engine) here, adding custom shapes or presets
         // this loads the tsparticles package bundle, it's the easiest method for getting everything ready
         // starting from v2 you can add only the features you need reducing the bundle size
@@ -72,7 +71,7 @@ const Background = () => {
                             default: "bounce",
                         },
                         random: false,
-                        speed: 4,
+                        speed: 2,
                         straight: false,
                     },
                     number: {
@@ -80,7 +79,7 @@ const Background = () => {
                             enable: true,
                             area: 800,
                         },
-                        value: 80,
+                        value: 100,
                     },
                     opacity: {
                         value: 0.5,
