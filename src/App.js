@@ -5,38 +5,52 @@ import ImageLinkForm from "./components/imageLinkForm/imageLinkForm";
 import Background from "./components/background/background";
 import Rank from "./components/rank/rank";
 import {Component} from "react";
-import Clarifai from 'clarifai';
 import FaceRecognition from "./components/face-recognition/FaceRecognition";
 import CelebrityRecognition from "./components/celebrity-recognition/celebrity-recognition";
 import SignIn from "./components/singIn/SignIn";
 import Register from "./components/register/Register";
 
-const app = new Clarifai.App({
-    apiKey: '840e115894c145bfb30bcad9d6babb6c'
-});
+
+
+const initialState = {
+    input: '',
+        imageURL: '',
+    box: {},
+    celeb: [{
+        name: '',
+        probability: ''
+    }],
+        route: 'signIn',
+    isSignedIn: false,
+    user: {
+    id: '',
+        name: '',
+        email: '',
+        entries: 0,
+        joined: ''
+    }
+}
 
 class App extends Component {
     constructor(props) {
         super(props);
-        this.state = {
-            input: '',
-            imageURL: '',
-            box: {},
-            celeb: [{
-                name: '',
-                probability: ''
-            }],
-            route: 'signIn',
-            isSignedIn: false
-        }
+        this.state = initialState;
     }
 
 
-
+    loadUser = (user) => {
+        this.setState({user: user})
+    }
 
     onInputChange = (event) => {
         this.setState({input: event.target.value})
     }
+
+    //TODO recognize all faces on image
+
+    //TODO display face details under the face frame
+
+    //TODO make it possible to edit/delete profile
 
     recognizeFace = (data) => {
         const celebData = data.outputs[0].data.regions[0].data.concepts;
@@ -60,14 +74,37 @@ class App extends Component {
 
     onSubmit = () => {
         this.setState({imageURL: this.state.input})
-        app.models.predict(Clarifai.CELEBRITY_MODEL, this.state.input)
-           .then(response => this.displayFaceBox(this.recognizeFace(response)))
-           .catch(err => console.log(err));
+        fetch("https://halnik-face-recognition.herokuapp.com/imageUrl", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                input: this.state.input
+            })
+        })
+        .then(response => response.json())
+        .then(res => {
+            if(res) {
+                fetch("https://halnik-face-recognition.herokuapp.com/image", {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        id: this.state.user.id,
+                    })
+                })
+                    .then(response => response.json())
+                    .then(count => {
+                        this.setState(Object.assign(this.state.user, {entries: count[0].entries}))
+                    })
+                    .catch(console.log);
+            }
+            this.displayFaceBox(this.recognizeFace(res))
+        })
+        .catch(err => console.log(err));
     }
 
     onRouteChange = (route) => {
         if(route === 'signOut')
-            this.setState({isSignedIn: false})
+            this.setState(initialState)
         else if (route === 'home')
             this.setState({isSignedIn: true})
 
@@ -75,23 +112,23 @@ class App extends Component {
     }
 
     render() {
-        let {imageUrl, isSignedIn, route, box, celeb} = this.state;
+        let {imageURL, isSignedIn, route, box, celeb} = this.state;
         return (
             <div className="App">
                 <Background/>
                 <Navigation isSignedIn={isSignedIn} onRouteChange={this.onRouteChange}/>
+                <Logo/>
                 { route === 'home'
                     ? <div>
-                        <Logo/>
-                        <Rank/>
+                        <Rank name={this.state.user.name} entries={this.state.user.entries}/>
                         <ImageLinkForm onInputChange={this.onInputChange} onSubmit={this.onSubmit}/>
                         <CelebrityRecognition celebrity={celeb} />
-                        <FaceRecognition box={box} imageURL={imageUrl} celeb={celeb}/>
+                        <FaceRecognition box={box} imageURL={imageURL} celeb={celeb}/>
                     </div>
                     : (
                         this.state.route === 'register'
-                            ?<Register onRouteChange={this.onRouteChange} />
-                            : <SignIn onRouteChange={this.onRouteChange} />
+                            ?<Register onRouteChange={this.onRouteChange} loadUser={this.loadUser}/>
+                            : <SignIn loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
                     )
                 }
             </div>
